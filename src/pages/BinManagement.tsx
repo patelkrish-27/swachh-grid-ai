@@ -8,7 +8,11 @@ import {
   CheckCircle,
   Clock,
   Truck,
-  Eye
+  Eye,
+  SlidersHorizontal,
+  X,
+  ChevronUp,
+  ChevronDown
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,80 +32,83 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
+import { formatDistanceToNow } from "date-fns";
 
 const mockBins = [
-  {
-    id: "BIN001",
-    location: "Main Street & 1st Ave",
-    fillLevel: 85,
-    status: "critical",
-    lastUpdated: "2 min ago",
-    batteryLevel: 78,
-    temperature: 24,
-    coordinates: "40.7589, -73.9851"
-  },
-  {
-    id: "BIN002",
-    location: "City Park East",
-    fillLevel: 45,
-    status: "normal", 
-    lastUpdated: "5 min ago",
-    batteryLevel: 92,
-    temperature: 22,
-    coordinates: "40.7614, -73.9776"
-  },
-  {
-    id: "BIN003",
-    location: "Shopping Mall",
-    fillLevel: 70,
-    status: "warning",
-    lastUpdated: "1 min ago", 
-    batteryLevel: 65,
-    temperature: 26,
-    coordinates: "40.7505, -73.9934"
-  },
-  {
-    id: "BIN004",
-    location: "University Campus",
-    fillLevel: 20,
-    status: "normal",
-    lastUpdated: "3 min ago",
-    batteryLevel: 88,
-    temperature: 23,
-    coordinates: "40.7829, -73.9654"
-  },
-  {
-    id: "BIN005",
-    location: "Bus Terminal",
-    fillLevel: 90,
-    status: "critical", 
-    lastUpdated: "1 min ago",
-    batteryLevel: 43,
-    temperature: 28,
-    coordinates: "40.7505, -73.9934"
-  },
-  {
-    id: "BIN006",
-    location: "Library Square",
-    fillLevel: 55,
-    status: "normal",
-    lastUpdated: "7 min ago",
-    batteryLevel: 95,
-    temperature: 21,
-    coordinates: "40.7542, -73.9840"
-  }
+  { id: "BIN001", location: "Main Street & 1st Ave", status: "critical", fillLevel: 85, batteryLevel: 78, temperature: 24, lastUpdated: "2025-09-06T12:45:00Z", wasteType: "Mixed" },
+  { id: "BIN002", location: "City Park East", status: "normal", fillLevel: 45, batteryLevel: 92, temperature: 22, lastUpdated: "2025-09-06T12:42:00Z", wasteType: "Wet" },
+  { id: "BIN003", location: "Shopping Mall", status: "warning", fillLevel: 70, batteryLevel: 65, temperature: 26, lastUpdated: "2025-09-06T12:50:00Z", wasteType: "Dry" },
+  { id: "BIN004", location: "University Campus", status: "normal", fillLevel: 20, batteryLevel: 88, temperature: 23, lastUpdated: "2025-09-06T12:40:00Z", wasteType: "Wet" },
+  { id: "BIN005", location: "Bus Terminal", status: "critical", fillLevel: 90, batteryLevel: 43, temperature: 28, lastUpdated: "2025-09-06T12:48:00Z", wasteType: "Mixed" },
+  { id: "BIN006", location: "Industrial Area", status: "warning", fillLevel: 65, batteryLevel: 55, temperature: 29, lastUpdated: "2025-09-06T12:44:00Z", wasteType: "Dry" },
+  { id: "BIN007", location: "Residential Block A", status: "normal", fillLevel: 35, batteryLevel: 80, temperature: 25, lastUpdated: "2025-09-06T12:46:00Z", wasteType: "Wet" },
+  { id: "BIN008", location: "Railway Station", status: "critical", fillLevel: 88, batteryLevel: 50, temperature: 27, lastUpdated: "2025-09-06T12:41:00Z", wasteType: "Mixed" },
+  { id: "BIN009", location: "Market Street", status: "normal", fillLevel: 40, batteryLevel: 85, temperature: 24, lastUpdated: "2025-09-06T12:43:00Z", wasteType: "Dry" },
+  { id: "BIN010", location: "Hospital Zone", status: "warning", fillLevel: 75, batteryLevel: 60, temperature: 26, lastUpdated: "2025-09-06T12:47:00Z", wasteType: "Wet" }
 ];
 
 const BinManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [wasteTypeFilter, setWasteTypeFilter] = useState("all");
+  const [fillLevelRange, setFillLevelRange] = useState([0, 100]);
+  const [batteryRange, setBatteryRange] = useState([0, 100]);
+  const [sortConfig, setSortConfig] = useState<{key: string, direction: 'asc' | 'desc'} | null>(null);
+  const [showFiltersModal, setShowFiltersModal] = useState(false);
 
   const filteredBins = mockBins.filter(bin => {
     const matchesSearch = bin.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          bin.location.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || bin.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesWasteType = wasteTypeFilter === "all" || bin.wasteType === wasteTypeFilter;
+    const matchesFillLevel = bin.fillLevel >= fillLevelRange[0] && bin.fillLevel <= fillLevelRange[1];
+    const matchesBattery = bin.batteryLevel >= batteryRange[0] && bin.batteryLevel <= batteryRange[1];
+    
+    return matchesSearch && matchesStatus && matchesWasteType && matchesFillLevel && matchesBattery;
   });
+
+  const sortedBins = sortConfig 
+    ? [...filteredBins].sort((a, b) => {
+        const aValue = a[sortConfig.key as keyof typeof a];
+        const bValue = b[sortConfig.key as keyof typeof b];
+        
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          return sortConfig.direction === 'asc' 
+            ? aValue.localeCompare(bValue)
+            : bValue.localeCompare(aValue);
+        }
+        
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+          return sortConfig.direction === 'asc' 
+            ? aValue - bValue
+            : bValue - aValue;
+        }
+        
+        return 0;
+      })
+    : filteredBins;
+
+  const handleSort = (key: string) => {
+    setSortConfig(current => ({
+      key,
+      direction: current?.key === key && current.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  const resetFilters = () => {
+    setWasteTypeFilter("all");
+    setFillLevelRange([0, 100]);
+    setBatteryRange([0, 100]);
+  };
 
   const getStatusBadge = (status: string): "destructive" | "secondary" | "default" | "outline" => {
     const variants: Record<string, "destructive" | "secondary" | "default" | "outline"> = {
@@ -203,11 +210,73 @@ const BinManagement = () => {
         <Card className="glass-card">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              <span>Smart Bins ({filteredBins.length})</span>
-              <Button variant="ghost" size="sm">
-                <Filter className="w-4 h-4 mr-2" />
-                More Filters
-              </Button>
+              <span>Smart Bins ({sortedBins.length})</span>
+              <Dialog open={showFiltersModal} onOpenChange={setShowFiltersModal}>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <SlidersHorizontal className="w-4 h-4 mr-2" />
+                    More Filters
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Advanced Filters</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-6">
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Waste Type</label>
+                      <Select value={wasteTypeFilter} onValueChange={setWasteTypeFilter}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select waste type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Types</SelectItem>
+                          <SelectItem value="Mixed">Mixed</SelectItem>
+                          <SelectItem value="Wet">Wet</SelectItem>
+                          <SelectItem value="Dry">Dry</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">
+                        Fill Level: {fillLevelRange[0]}% - {fillLevelRange[1]}%
+                      </label>
+                      <Slider
+                        value={fillLevelRange}
+                        onValueChange={setFillLevelRange}
+                        max={100}
+                        min={0}
+                        step={5}
+                        className="w-full"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">
+                        Battery Level: {batteryRange[0]}% - {batteryRange[1]}%
+                      </label>
+                      <Slider
+                        value={batteryRange}
+                        onValueChange={setBatteryRange}
+                        max={100}
+                        min={0}
+                        step={5}
+                        className="w-full"
+                      />
+                    </div>
+
+                    <div className="flex space-x-2">
+                      <Button variant="outline" onClick={resetFilters} className="flex-1">
+                        Reset
+                      </Button>
+                      <Button onClick={() => setShowFiltersModal(false)} className="flex-1">
+                        Apply
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -215,18 +284,47 @@ const BinManagement = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Bin ID</TableHead>
+                    <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('id')}>
+                      <div className="flex items-center space-x-1">
+                        <span>Bin ID</span>
+                        {sortConfig?.key === 'id' && (
+                          sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                        )}
+                      </div>
+                    </TableHead>
                     <TableHead>Location</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Fill Level</TableHead>
-                    <TableHead>Battery</TableHead>
-                    <TableHead>Temperature</TableHead>
+                    <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('fillLevel')}>
+                      <div className="flex items-center space-x-1">
+                        <span>Fill Level</span>
+                        {sortConfig?.key === 'fillLevel' && (
+                          sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('batteryLevel')}>
+                      <div className="flex items-center space-x-1">
+                        <span>Battery</span>
+                        {sortConfig?.key === 'batteryLevel' && (
+                          sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('temperature')}>
+                      <div className="flex items-center space-x-1">
+                        <span>Temperature</span>
+                        {sortConfig?.key === 'temperature' && (
+                          sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead>Waste Type</TableHead>
                     <TableHead>Last Updated</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredBins.map((bin) => (
+                  {sortedBins.map((bin) => (
                     <TableRow key={bin.id} className="hover:bg-accent/50">
                       <TableCell className="font-medium">{bin.id}</TableCell>
                       <TableCell>
@@ -267,8 +365,13 @@ const BinManagement = () => {
                         </div>
                       </TableCell>
                       <TableCell>{bin.temperature}°C</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs">
+                          {bin.wasteType}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {bin.lastUpdated}
+                        {formatDistanceToNow(new Date(bin.lastUpdated), { addSuffix: true })}
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
