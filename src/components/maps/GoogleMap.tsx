@@ -7,12 +7,13 @@ interface GoogleMapProps {
   stops: Stop[];
   selectedArea: string;
   onOptimizeRoute: (optimizedStops: Stop[]) => void;
+  includeNormalBins?: boolean;
 }
 
 const GOOGLE_MAPS_API_KEY = "AIzaSyD2lLpyO2yskFaVFQGVKYHVn6zBviozPZw";
 const VADODARA_CENTER = { lat: 22.3072, lng: 73.1812 };
 
-const GoogleMap = ({ stops, selectedArea, onOptimizeRoute }: GoogleMapProps) => {
+const GoogleMap = ({ stops, selectedArea, onOptimizeRoute, includeNormalBins = false }: GoogleMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [markers, setMarkers] = useState<google.maps.Marker[]>([]);
@@ -77,7 +78,7 @@ const GoogleMap = ({ stops, selectedArea, onOptimizeRoute }: GoogleMapProps) => 
     const newMarkers: google.maps.Marker[] = [];
 
     stops.forEach((stop) => {
-      const fillLevel = stop.fillLevel || 0;
+      const fillLevel = stop.fill_level_percent || stop.fillLevel || 0;
       const markerColor = fillLevel >= 80 ? '#ff4d4d' : fillLevel >= 50 ? '#ffcc00' : '#4caf50';
       
       const marker = new google.maps.Marker({
@@ -96,8 +97,8 @@ const GoogleMap = ({ stops, selectedArea, onOptimizeRoute }: GoogleMapProps) => 
 
       // Add click listener for info window
       marker.addListener('click', () => {
-        const lastCleanedText = stop.lastCleaned 
-          ? formatDistanceToNow(new Date(stop.lastCleaned), { addSuffix: true })
+        const lastCleanedText = stop.last_collected || stop.lastCleaned
+          ? formatDistanceToNow(new Date(stop.last_collected || stop.lastCleaned), { addSuffix: true })
           : 'Unknown';
 
         const content = `
@@ -108,10 +109,10 @@ const GoogleMap = ({ stops, selectedArea, onOptimizeRoute }: GoogleMapProps) => 
               <span style="color: ${markerColor}; font-weight: 600;">${fillLevel}%</span>
             </div>
             <div style="margin: 4px 0;">
-              <strong>Last Cleaned:</strong> ${lastCleanedText}
+              <strong>Last Collected:</strong> ${lastCleanedText}
             </div>
             <div style="margin: 4px 0;">
-              <strong>Bin ID:</strong> ${stop.id}
+              <strong>Bin ID:</strong> ${stop.bin_id || stop.id}
             </div>
           </div>
         `;
@@ -130,8 +131,10 @@ const GoogleMap = ({ stops, selectedArea, onOptimizeRoute }: GoogleMapProps) => 
   const optimizeRoute = async () => {
     if (!map || !directionsRenderer) return;
 
-    // Filter stops with fill level >= 50%
-    const eligibleStops = stops.filter(stop => (stop.fillLevel || 0) >= 50);
+    // Filter stops based on include normal bins setting
+    const eligibleStops = includeNormalBins 
+      ? stops 
+      : stops.filter(stop => (stop.fill_level_percent || stop.fillLevel || 0) >= 50);
     
     if (eligibleStops.length < 2) {
       alert("Not enough bins with fill level ≥ 50% to optimize route");
@@ -139,7 +142,7 @@ const GoogleMap = ({ stops, selectedArea, onOptimizeRoute }: GoogleMapProps) => 
     }
 
     // Sort by fill level (highest first) for prioritization
-    const prioritizedStops = [...eligibleStops].sort((a, b) => (b.fillLevel || 0) - (a.fillLevel || 0));
+    const prioritizedStops = [...eligibleStops].sort((a, b) => (b.fill_level_percent || b.fillLevel || 0) - (a.fill_level_percent || a.fillLevel || 0));
 
     // Create waypoints for Directions API
     const origin = prioritizedStops[0];
@@ -213,7 +216,7 @@ const GoogleMap = ({ stops, selectedArea, onOptimizeRoute }: GoogleMapProps) => 
       <div className="absolute bottom-4 left-4 bg-card/90 backdrop-blur-sm rounded-lg p-3 shadow-lg">
         <div className="text-sm font-medium">{selectedArea}</div>
         <div className="text-xs text-muted-foreground">
-          {stops.length} bins • {stops.filter(s => (s.fillLevel || 0) >= 50).length} need collection
+          {stops.length} bins • {stops.filter(s => (s.fill_level_percent || s.fillLevel || 0) >= 50).length} need collection
         </div>
       </div>
     </div>

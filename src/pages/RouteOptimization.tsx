@@ -26,6 +26,7 @@ const RouteOptimization = () => {
   const [routeData, setRouteData] = useState(vadodaraRoutesData);
   const [optimizedStops, setOptimizedStops] = useState<Stop[]>([]);
   const [isRealTimeMode, setIsRealTimeMode] = useState(false);
+  const [includeNormalBins, setIncludeNormalBins] = useState(false);
 
   // Get current stops based on selected area
   const getCurrentStops = () => {
@@ -58,7 +59,9 @@ const RouteOptimization = () => {
   };
 
   const currentStops = getCurrentStops();
-  const eligibleStops = currentStops.filter(stop => (stop.fillLevel || 0) >= 50);
+  const eligibleStops = includeNormalBins 
+    ? currentStops 
+    : currentStops.filter(stop => (stop.fill_level_percent || stop.fillLevel || 0) >= 50);
   
   const routeMetrics = {
     totalDistance: "28.6 km",
@@ -121,6 +124,8 @@ const RouteOptimization = () => {
                       <SelectItem value="Raopura">Raopura</SelectItem>
                       <SelectItem value="Karelibaug">Karelibaug</SelectItem>
                       <SelectItem value="Pratapnagar">Pratapnagar</SelectItem>
+                      <SelectItem value="Alkapuri">Alkapuri</SelectItem>
+                      <SelectItem value="Manjalpur">Manjalpur</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -136,11 +141,15 @@ const RouteOptimization = () => {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm">Need Collection (≥50%)</span>
-                      <Badge variant="outline">{eligibleStops.length}</Badge>
+                      <Badge variant="outline">{currentStops.filter(s => (s.fill_level_percent || s.fillLevel || 0) >= 50).length}</Badge>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm">Critical Bins (≥80%)</span>
-                      <Badge variant="outline">{currentStops.filter(s => (s.fillLevel || 0) >= 80).length}</Badge>
+                      <Badge variant="outline">{currentStops.filter(s => (s.fill_level_percent || s.fillLevel || 0) >= 80).length}</Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Eligible for Route</span>
+                      <Badge variant="outline">{eligibleStops.length}</Badge>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm">Selected Area</span>
@@ -149,11 +158,27 @@ const RouteOptimization = () => {
                   </div>
                 </div>
 
+                {/* Route Options */}
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="includeNormal"
+                      checked={includeNormalBins}
+                      onChange={(e) => setIncludeNormalBins(e.target.checked)}
+                      className="rounded border-border"
+                    />
+                    <label htmlFor="includeNormal" className="text-sm">
+                      Include Normal Bins (&lt;50%)
+                    </label>
+                  </div>
+                </div>
+
                 {/* AI Route Info */}
                 <div className="p-3 bg-primary/10 rounded-lg">
                   <div className="text-sm font-medium text-primary mb-1">AI Route Optimization</div>
                   <div className="text-xs text-muted-foreground">
-                    Automatically skips bins with fill level &lt; 50%
+                    {includeNormalBins ? "Including all bins in route" : "Automatically skips bins with fill level < 50%"}
                   </div>
                 </div>
 
@@ -207,6 +232,7 @@ const RouteOptimization = () => {
                         stops={currentStops}
                         selectedArea={selectedArea}
                         onOptimizeRoute={handleOptimizeRoute}
+                        includeNormalBins={includeNormalBins}
                       />
                     </div>
                   </TabsContent>
@@ -226,18 +252,18 @@ const RouteOptimization = () => {
                             </div>
                             <div className="flex-1">
                               <div className="font-medium">{stop.name}</div>
-                              <div className="text-sm text-muted-foreground">Bin ID: {stop.id}</div>
+                              <div className="text-sm text-muted-foreground">Bin ID: {stop.bin_id || stop.id}</div>
                             </div>
                             <Badge 
                               className={
-                                (stop.fillLevel || 0) >= 80 ? "bg-alert text-white" :
-                                (stop.fillLevel || 0) >= 50 ? "bg-warning text-white" : "bg-success text-white"
+                                (stop.fill_level_percent || stop.fillLevel || 0) >= 80 ? "bg-alert text-white" :
+                                (stop.fill_level_percent || stop.fillLevel || 0) >= 50 ? "bg-warning text-white" : "bg-success text-white"
                               }
                             >
-                              {stop.fillLevel}% full
+                              {stop.fill_level_percent || stop.fillLevel}% full
                             </Badge>
                             <div className="text-sm font-medium">
-                              {stop.lastCleaned ? formatDistanceToNow(new Date(stop.lastCleaned), { addSuffix: true }) : 'Unknown'}
+                              {stop.last_collected || stop.lastCleaned ? formatDistanceToNow(new Date(stop.last_collected || stop.lastCleaned), { addSuffix: true }) : 'Unknown'}
                             </div>
                           </div>
                         ))}
