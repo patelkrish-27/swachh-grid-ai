@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Route, 
   MapPin, 
@@ -8,73 +8,65 @@ import {
   Download,
   Play,
   RotateCcw,
-  Target
+  Target,
+  RefreshCw
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import GoogleMap from "@/components/maps/GoogleMap";
+import { vadodaraRoutesData, generateRealTimeData, Stop } from "@/data/vadodaraRoutes";
+import { formatDistanceToNow } from "date-fns";
 
 const RouteOptimization = () => {
-  const [startLocation, setStartLocation] = useState("Municipal Depot");
-  const [isOptimizing, setIsOptimizing] = useState(false);
-  const [optimizedRoute, setOptimizedRoute] = useState(null);
+  const [selectedArea, setSelectedArea] = useState("All Areas");
+  const [routeData, setRouteData] = useState(vadodaraRoutesData);
+  const [optimizedStops, setOptimizedStops] = useState<Stop[]>([]);
+  const [isRealTimeMode, setIsRealTimeMode] = useState(false);
 
-  const mockRoute = {
-    id: "ROUTE_001",
-    totalDistance: "32.4 km",
-    estimatedTime: "2h 45m",
-    fuelCost: "$45.60",
-    emissions: "12.4 kg CO2",
-    stops: [
-      { id: "DEPOT", name: "Municipal Depot", type: "start", fillLevel: null, eta: "09:00" },
-      { id: "BIN001", name: "Main Street & 1st Ave", type: "pickup", fillLevel: 85, eta: "09:15" },
-      { id: "BIN005", name: "Bus Terminal", type: "pickup", fillLevel: 90, eta: "09:35" },
-      { id: "BIN003", name: "Shopping Mall", type: "pickup", fillLevel: 70, eta: "09:55" },
-      { id: "BIN007", name: "Hospital Complex", type: "pickup", fillLevel: 78, eta: "10:20" },
-      { id: "LANDFILL", name: "Central Landfill", type: "disposal", fillLevel: null, eta: "11:00" },
-      { id: "BIN012", name: "Sports Stadium", type: "pickup", fillLevel: 82, eta: "11:45" },
-      { id: "DEPOT", name: "Municipal Depot", type: "end", fillLevel: null, eta: "12:30" }
-    ]
+  // Get current stops based on selected area
+  const getCurrentStops = () => {
+    if (selectedArea === "All Areas") {
+      return routeData.flatMap(route => route.stops);
+    }
+    const route = routeData.find(r => r.area === selectedArea);
+    return route ? route.stops : [];
   };
 
-  const handleOptimizeRoute = () => {
-    setIsOptimizing(true);
-    setTimeout(() => {
-      setOptimizedRoute(mockRoute);
-      setIsOptimizing(false);
-    }, 2000);
+  // Real-time data simulation
+  useEffect(() => {
+    if (isRealTimeMode) {
+      const interval = setInterval(() => {
+        setRouteData(generateRealTimeData());
+      }, 5000); // Update every 5 seconds
+      return () => clearInterval(interval);
+    }
+  }, [isRealTimeMode]);
+
+  const handleOptimizeRoute = (stops: Stop[]) => {
+    setOptimizedStops(stops);
   };
 
-  const getStopIcon = (type: string) => {
-    switch (type) {
-      case "start":
-      case "end":
-        return <Target className="w-4 h-4" />;
-      case "pickup":
-        return <MapPin className="w-4 h-4" />;
-      case "disposal":
-        return <Truck className="w-4 h-4" />;
-      default:
-        return <MapPin className="w-4 h-4" />;
+  const toggleRealTimeMode = () => {
+    setIsRealTimeMode(!isRealTimeMode);
+    if (!isRealTimeMode) {
+      setRouteData(generateRealTimeData());
     }
   };
 
-  const getStopColor = (type: string) => {
-    switch (type) {
-      case "start":
-        return "bg-success";
-      case "end":
-        return "bg-info";
-      case "pickup":
-        return "bg-warning";
-      case "disposal":
-        return "bg-alert";
-      default:
-        return "bg-muted-foreground";
-    }
+  const currentStops = getCurrentStops();
+  const eligibleStops = currentStops.filter(stop => (stop.fillLevel || 0) >= 50);
+  
+  const routeMetrics = {
+    totalDistance: "28.6 km",
+    estimatedTime: "2h 15m", 
+    fuelCost: "$38.20",
+    emissions: "10.2 kg CO2"
   };
+
 
   return (
     <div className="min-h-screen pt-16 pb-8">
@@ -89,14 +81,18 @@ const RouteOptimization = () => {
               Generate optimal collection routes using AI-powered algorithms
             </p>
           </div>
-          <div className="flex space-x-3 mt-4 md:mt-0">
+            <div className="flex space-x-3 mt-4 md:mt-0">
             <Button variant="outline" size="sm">
               <Download className="w-4 h-4 mr-2" />
               Export Routes
             </Button>
-            <Button size="sm">
-              <RotateCcw className="w-4 h-4 mr-2" />
-              Refresh Data
+            <Button 
+              onClick={toggleRealTimeMode}
+              variant={isRealTimeMode ? "default" : "outline"}
+              size="sm"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${isRealTimeMode ? 'animate-spin' : ''}`} />
+              {isRealTimeMode ? 'Real-Time ON' : 'Enable Real-Time'}
             </Button>
           </div>
         </div>
@@ -112,14 +108,21 @@ const RouteOptimization = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Start Location */}
+                {/* Area Selection */}
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Start Location</label>
-                  <Input
-                    value={startLocation}
-                    onChange={(e) => setStartLocation(e.target.value)}
-                    placeholder="Enter starting point"
-                  />
+                  <label className="text-sm font-medium mb-2 block">Select Area</label>
+                  <Select value={selectedArea} onValueChange={setSelectedArea}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose an area" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="All Areas">All Areas</SelectItem>
+                      <SelectItem value="Dandia Bazar">Dandia Bazar</SelectItem>
+                      <SelectItem value="Raopura">Raopura</SelectItem>
+                      <SelectItem value="Karelibaug">Karelibaug</SelectItem>
+                      <SelectItem value="Pratapnagar">Pratapnagar</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* Route Parameters */}
@@ -128,62 +131,51 @@ const RouteOptimization = () => {
                   
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm">Priority Fill Level</span>
-                      <Badge variant="outline">≥ 70%</Badge>
+                      <span className="text-sm">Total Bins</span>
+                      <Badge variant="outline">{currentStops.length}</Badge>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm">Max Route Duration</span>
-                      <Badge variant="outline">4 hours</Badge>
+                      <span className="text-sm">Need Collection (≥50%)</span>
+                      <Badge variant="outline">{eligibleStops.length}</Badge>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm">Truck Capacity</span>
-                      <Badge variant="outline">8 tons</Badge>
+                      <span className="text-sm">Critical Bins (≥80%)</span>
+                      <Badge variant="outline">{currentStops.filter(s => (s.fillLevel || 0) >= 80).length}</Badge>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm">Available Trucks</span>
-                      <Badge variant="outline">5 active</Badge>
+                      <span className="text-sm">Selected Area</span>
+                      <Badge variant="outline">{selectedArea}</Badge>
                     </div>
                   </div>
                 </div>
 
-                {/* Generate Button */}
-                <Button 
-                  onClick={handleOptimizeRoute}
-                  disabled={isOptimizing}
-                  className="w-full"
-                >
-                  {isOptimizing ? (
-                    <>
-                      <RotateCcw className="w-4 h-4 mr-2 animate-spin" />
-                      Optimizing...
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-4 h-4 mr-2" />
-                      Generate Optimal Route
-                    </>
-                  )}
-                </Button>
+                {/* AI Route Info */}
+                <div className="p-3 bg-primary/10 rounded-lg">
+                  <div className="text-sm font-medium text-primary mb-1">AI Route Optimization</div>
+                  <div className="text-xs text-muted-foreground">
+                    Automatically skips bins with fill level &lt; 50%
+                  </div>
+                </div>
 
                 {/* Route Metrics */}
-                {optimizedRoute && (
+                {optimizedStops.length > 0 && (
                   <div className="space-y-3 pt-4 border-t border-border">
                     <h4 className="font-medium">Route Metrics</h4>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="text-center p-3 bg-accent/20 rounded-lg">
-                        <div className="text-lg font-bold text-primary">{mockRoute.totalDistance}</div>
+                        <div className="text-lg font-bold text-primary">{routeMetrics.totalDistance}</div>
                         <div className="text-xs text-muted-foreground">Total Distance</div>
                       </div>
                       <div className="text-center p-3 bg-accent/20 rounded-lg">
-                        <div className="text-lg font-bold text-primary">{mockRoute.estimatedTime}</div>
+                        <div className="text-lg font-bold text-primary">{routeMetrics.estimatedTime}</div>
                         <div className="text-xs text-muted-foreground">Est. Time</div>
                       </div>
                       <div className="text-center p-3 bg-accent/20 rounded-lg">
-                        <div className="text-lg font-bold text-success">{mockRoute.fuelCost}</div>
+                        <div className="text-lg font-bold text-success">{routeMetrics.fuelCost}</div>
                         <div className="text-xs text-muted-foreground">Fuel Cost</div>
                       </div>
                       <div className="text-center p-3 bg-accent/20 rounded-lg">
-                        <div className="text-lg font-bold text-info">{mockRoute.emissions}</div>
+                        <div className="text-lg font-bold text-info">{routeMetrics.emissions}</div>
                         <div className="text-xs text-muted-foreground">CO2 Saved</div>
                       </div>
                     </div>
@@ -210,94 +202,42 @@ const RouteOptimization = () => {
                   </TabsList>
                   
                   <TabsContent value="map" className="space-y-4">
-                    {/* Map Placeholder */}
-                    <div className="w-full h-[500px] bg-gradient-to-br from-muted/20 to-accent/20 rounded-lg relative overflow-hidden">
-                      <div className="absolute inset-0 bg-gradient-to-br from-info/10 via-transparent to-primary/10">
-                        {/* Grid Pattern */}
-                        <svg className="absolute inset-0 w-full h-full opacity-10">
-                          <defs>
-                            <pattern id="route-grid" width="50" height="50" patternUnits="userSpaceOnUse">
-                              <path d="M 50 0 L 0 0 0 50" fill="none" stroke="currentColor" strokeWidth="1"/>
-                            </pattern>
-                          </defs>
-                          <rect width="100%" height="100%" fill="url(#route-grid)" />
-                        </svg>
-
-                        {optimizedRoute && (
-                          <>
-                            {/* Route Line */}
-                            <svg className="absolute inset-0 w-full h-full">
-                              <path
-                                d="M 100 100 L 300 150 L 500 200 L 700 250 L 900 300 L 800 400 L 600 450 L 400 400 L 200 350 L 100 300"
-                                stroke="hsl(var(--primary))"
-                                strokeWidth="3"
-                                fill="none"
-                                strokeDasharray="5,5"
-                                className="animate-pulse-slow"
-                              />
-                            </svg>
-
-                            {/* Route Stops */}
-                            {mockRoute.stops.map((stop, index) => (
-                              <div
-                                key={stop.id}
-                                className="absolute transform -translate-x-1/2 -translate-y-1/2"
-                                style={{
-                                  left: `${15 + index * 12}%`,
-                                  top: `${20 + (index % 3) * 15}%`
-                                }}
-                              >
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white ${getStopColor(stop.type)} shadow-lg`}>
-                                  {getStopIcon(stop.type)}
-                                </div>
-                                <div className="absolute top-12 left-1/2 transform -translate-x-1/2 bg-card px-2 py-1 rounded shadow-lg text-xs whitespace-nowrap">
-                                  <div className="font-medium">{stop.name}</div>
-                                  <div className="text-muted-foreground">{stop.eta}</div>
-                                </div>
-                              </div>
-                            ))}
-                          </>
-                        )}
-
-                        {!optimizedRoute && (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="text-center">
-                              <Route className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                              <h3 className="text-lg font-medium mb-2">No Route Generated</h3>
-                              <p className="text-muted-foreground">
-                                Click "Generate Optimal Route" to see the visualization
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                    <div className="w-full h-[500px]">
+                      <GoogleMap
+                        stops={currentStops}
+                        selectedArea={selectedArea}
+                        onOptimizeRoute={handleOptimizeRoute}
+                      />
                     </div>
                   </TabsContent>
                   
                   <TabsContent value="list" className="space-y-4">
-                    {optimizedRoute ? (
+                    {optimizedStops.length > 0 ? (
                       <div className="space-y-3">
-                        {mockRoute.stops.map((stop, index) => (
+                        {optimizedStops.map((stop, index) => (
                           <div key={stop.id} className="flex items-center space-x-4 p-4 bg-accent/20 rounded-lg">
                             <div className="flex items-center space-x-3">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ${getStopColor(stop.type)}`}>
+                              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold bg-primary">
                                 {index + 1}
                               </div>
-                              <div className={`w-6 h-6 rounded flex items-center justify-center ${getStopColor(stop.type)}`}>
-                                {getStopIcon(stop.type)}
+                              <div className="w-6 h-6 rounded flex items-center justify-center bg-primary">
+                                <MapPin className="w-4 h-4 text-white" />
                               </div>
                             </div>
                             <div className="flex-1">
                               <div className="font-medium">{stop.name}</div>
-                              <div className="text-sm text-muted-foreground capitalize">{stop.type}</div>
+                              <div className="text-sm text-muted-foreground">Bin ID: {stop.id}</div>
                             </div>
-                            {stop.fillLevel && (
-                              <Badge variant="outline">
-                                {stop.fillLevel}% full
-                              </Badge>
-                            )}
+                            <Badge 
+                              className={
+                                (stop.fillLevel || 0) >= 80 ? "bg-alert text-white" :
+                                (stop.fillLevel || 0) >= 50 ? "bg-warning text-white" : "bg-success text-white"
+                              }
+                            >
+                              {stop.fillLevel}% full
+                            </Badge>
                             <div className="text-sm font-medium">
-                              {stop.eta}
+                              {stop.lastCleaned ? formatDistanceToNow(new Date(stop.lastCleaned), { addSuffix: true }) : 'Unknown'}
                             </div>
                           </div>
                         ))}
@@ -305,9 +245,9 @@ const RouteOptimization = () => {
                     ) : (
                       <div className="text-center py-12">
                         <Route className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                        <h3 className="text-lg font-medium mb-2">No Route Generated</h3>
+                        <h3 className="text-lg font-medium mb-2">No Optimized Route</h3>
                         <p className="text-muted-foreground">
-                          Generate an optimal route to see the step-by-step directions
+                          Select an area and click on the map to generate an optimal route
                         </p>
                       </div>
                     )}
