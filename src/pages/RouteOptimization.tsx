@@ -183,15 +183,19 @@ const RouteOptimization = () => {
                 <div className="space-y-3">
                   <div>
                     <label className="text-sm font-medium mb-2 block">Start Stop (Optional)</label>
-                    <Select value={startStop?.bin_id || startStop?.id || ""} onValueChange={(value) => {
-                      const stop = currentStops.find(s => (s.bin_id || s.id) === value);
-                      setStartStop(stop || null);
+                    <Select value={startStop?.bin_id || startStop?.id || "none"} onValueChange={(value) => {
+                      if (value === "none") {
+                        setStartStop(null);
+                      } else {
+                        const stop = currentStops.find(s => (s.bin_id || s.id) === value);
+                        setStartStop(stop || null);
+                      }
                     }}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select start stop" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">No specific start</SelectItem>
+                        <SelectItem value="none">No specific start</SelectItem>
                         {currentStops.map((stop) => (
                           <SelectItem key={stop.bin_id || stop.id} value={stop.bin_id || stop.id}>
                             {stop.name}
@@ -203,15 +207,19 @@ const RouteOptimization = () => {
 
                   <div>
                     <label className="text-sm font-medium mb-2 block">End Stop (Optional)</label>
-                    <Select value={endStop?.bin_id || endStop?.id || ""} onValueChange={(value) => {
-                      const stop = currentStops.find(s => (s.bin_id || s.id) === value);
-                      setEndStop(stop || null);
+                    <Select value={endStop?.bin_id || endStop?.id || "none"} onValueChange={(value) => {
+                      if (value === "none") {
+                        setEndStop(null);
+                      } else {
+                        const stop = currentStops.find(s => (s.bin_id || s.id) === value);
+                        setEndStop(stop || null);
+                      }
                     }}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select end stop" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">No specific end</SelectItem>
+                        <SelectItem value="none">No specific end</SelectItem>
                         {currentStops.map((stop) => (
                           <SelectItem key={stop.bin_id || stop.id} value={stop.bin_id || stop.id}>
                             {stop.name}
