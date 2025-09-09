@@ -27,6 +27,9 @@ const RouteOptimization = () => {
   const [optimizedStops, setOptimizedStops] = useState<Stop[]>([]);
   const [isRealTimeMode, setIsRealTimeMode] = useState(false);
   const [includeNormalBins, setIncludeNormalBins] = useState(false);
+  const [optimizationMethod, setOptimizationMethod] = useState<'google' | 'nearest_neighbor' | 'genetic' | 'simulated_annealing'>('google');
+  const [startStop, setStartStop] = useState<Stop | null>(null);
+  const [endStop, setEndStop] = useState<Stop | null>(null);
 
   // Get current stops based on selected area
   const getCurrentStops = () => {
@@ -47,8 +50,10 @@ const RouteOptimization = () => {
     }
   }, [isRealTimeMode]);
 
-  const handleOptimizeRoute = (stops: Stop[]) => {
+  const handleOptimizeRoute = (stops: Stop[], startStop?: Stop, endStop?: Stop) => {
     setOptimizedStops(stops);
+    if (startStop) setStartStop(startStop);
+    if (endStop) setEndStop(endStop);
   };
 
   const toggleRealTimeMode = () => {
@@ -158,6 +163,65 @@ const RouteOptimization = () => {
                   </div>
                 </div>
 
+                {/* Optimization Method */}
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Optimization Method</label>
+                  <Select value={optimizationMethod} onValueChange={(value: any) => setOptimizationMethod(value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose optimization method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="google">Google AI Optimization</SelectItem>
+                      <SelectItem value="nearest_neighbor">Nearest Neighbor + 2-Opt</SelectItem>
+                      <SelectItem value="genetic">Genetic Algorithm</SelectItem>
+                      <SelectItem value="simulated_annealing">Simulated Annealing</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Start/End Stop Selection */}
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Start Stop (Optional)</label>
+                    <Select value={startStop?.bin_id || startStop?.id || ""} onValueChange={(value) => {
+                      const stop = currentStops.find(s => (s.bin_id || s.id) === value);
+                      setStartStop(stop || null);
+                    }}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select start stop" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">No specific start</SelectItem>
+                        {currentStops.map((stop) => (
+                          <SelectItem key={stop.bin_id || stop.id} value={stop.bin_id || stop.id}>
+                            {stop.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">End Stop (Optional)</label>
+                    <Select value={endStop?.bin_id || endStop?.id || ""} onValueChange={(value) => {
+                      const stop = currentStops.find(s => (s.bin_id || s.id) === value);
+                      setEndStop(stop || null);
+                    }}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select end stop" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">No specific end</SelectItem>
+                        {currentStops.map((stop) => (
+                          <SelectItem key={stop.bin_id || stop.id} value={stop.bin_id || stop.id}>
+                            {stop.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
                 {/* Route Options */}
                 <div className="space-y-3">
                   <div className="flex items-center space-x-2">
@@ -174,11 +238,20 @@ const RouteOptimization = () => {
                   </div>
                 </div>
 
-                {/* AI Route Info */}
+                {/* Optimization Info */}
                 <div className="p-3 bg-primary/10 rounded-lg">
-                  <div className="text-sm font-medium text-primary mb-1">AI Route Optimization</div>
+                  <div className="text-sm font-medium text-primary mb-1">
+                    {optimizationMethod === 'google' ? 'Google AI Optimization' : 
+                     optimizationMethod === 'nearest_neighbor' ? 'Nearest Neighbor + 2-Opt' :
+                     optimizationMethod === 'genetic' ? 'Genetic Algorithm' : 'Simulated Annealing'}
+                  </div>
                   <div className="text-xs text-muted-foreground">
                     {includeNormalBins ? "Including all bins in route" : "Automatically skips bins with fill level < 50%"}
+                    {(startStop || endStop) && <div className="mt-1">
+                      {startStop && `Start: ${startStop.name}`}
+                      {startStop && endStop && ' → '}
+                      {endStop && `End: ${endStop.name}`}
+                    </div>}
                   </div>
                 </div>
 
@@ -233,6 +306,9 @@ const RouteOptimization = () => {
                         selectedArea={selectedArea}
                         onOptimizeRoute={handleOptimizeRoute}
                         includeNormalBins={includeNormalBins}
+                        optimizationMethod={optimizationMethod}
+                        startStop={startStop}
+                        endStop={endStop}
                       />
                     </div>
                   </TabsContent>

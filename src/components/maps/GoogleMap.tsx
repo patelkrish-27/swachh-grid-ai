@@ -2,23 +2,29 @@ import { useEffect, useRef, useState } from "react";
 import { Loader } from "@googlemaps/js-api-loader";
 import { Stop } from "@/data/vadodaraRoutes";
 import { formatDistanceToNow } from "date-fns";
+import { optimizeRoute } from "@/utils/routeOptimization";
 
 interface GoogleMapProps {
   stops: Stop[];
   selectedArea: string;
-  onOptimizeRoute: (optimizedStops: Stop[]) => void;
+  onOptimizeRoute: (optimizedStops: Stop[], startStop?: Stop, endStop?: Stop) => void;
   includeNormalBins?: boolean;
+  optimizationMethod?: 'google' | 'nearest_neighbor' | 'genetic' | 'simulated_annealing';
+  startStop?: Stop;
+  endStop?: Stop;
 }
 
 const GOOGLE_MAPS_API_KEY = "AIzaSyD2lLpyO2yskFaVFQGVKYHVn6zBviozPZw";
 const VADODARA_CENTER = { lat: 22.3072, lng: 73.1812 };
 
-const GoogleMap = ({ stops, selectedArea, onOptimizeRoute, includeNormalBins = false }: GoogleMapProps) => {
+const GoogleMap = ({ stops, selectedArea, onOptimizeRoute, includeNormalBins = false, optimizationMethod = 'google', startStop, endStop }: GoogleMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [markers, setMarkers] = useState<google.maps.Marker[]>([]);
   const [directionsRenderer, setDirectionsRenderer] = useState<google.maps.DirectionsRenderer | null>(null);
   const [infoWindow, setInfoWindow] = useState<google.maps.InfoWindow | null>(null);
+  const [startMarker, setStartMarker] = useState<google.maps.Marker | null>(null);
+  const [endMarker, setEndMarker] = useState<google.maps.Marker | null>(null);
 
   // Initialize Google Maps
   useEffect(() => {
@@ -72,6 +78,8 @@ const GoogleMap = ({ stops, selectedArea, onOptimizeRoute, includeNormalBins = f
 
     // Clear existing markers
     markers.forEach(marker => marker.setMap(null));
+    startMarker?.setMap(null);
+    endMarker?.setMap(null);
     setMarkers([]);
 
     // Create new markers
@@ -124,11 +132,46 @@ const GoogleMap = ({ stops, selectedArea, onOptimizeRoute, includeNormalBins = f
       newMarkers.push(marker);
     });
 
+    // Add start/end markers if specified
+    if (startStop && map) {
+      const startMarkerInstance = new google.maps.Marker({
+        position: { lat: startStop.latitude, lng: startStop.longitude },
+        map: map,
+        title: `START: ${startStop.name}`,
+        icon: {
+          path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+          scale: 15,
+          fillColor: '#00ff00',
+          fillOpacity: 1,
+          strokeColor: '#ffffff',
+          strokeWeight: 2
+        }
+      });
+      setStartMarker(startMarkerInstance);
+    }
+
+    if (endStop && map) {
+      const endMarkerInstance = new google.maps.Marker({
+        position: { lat: endStop.latitude, lng: endStop.longitude },
+        map: map,
+        title: `END: ${endStop.name}`,
+        icon: {
+          path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
+          scale: 15,
+          fillColor: '#ff0000',
+          fillOpacity: 1,
+          strokeColor: '#ffffff',
+          strokeWeight: 2
+        }
+      });
+      setEndMarker(endMarkerInstance);
+    }
+
     setMarkers(newMarkers);
-  }, [map, stops, infoWindow]);
+  }, [map, stops, infoWindow, startStop, endStop]);
 
   // AI-powered route optimization
-  const optimizeRoute = async () => {
+  const optimizeRouteHandler = async () => {
     if (!map || !directionsRenderer) return;
 
     // Filter stops based on include normal bins setting
@@ -141,33 +184,81 @@ const GoogleMap = ({ stops, selectedArea, onOptimizeRoute, includeNormalBins = f
       return;
     }
 
-    // Sort by fill level (highest first) for prioritization
-    const prioritizedStops = [...eligibleStops].sort((a, b) => (b.fill_level_percent || b.fillLevel || 0) - (a.fill_level_percent || a.fillLevel || 0));
+    let optimizedStops: Stop[] = [];
 
-    // Create waypoints for Directions API
-    const origin = prioritizedStops[0];
-    const destination = prioritizedStops[prioritizedStops.length - 1];
-    const waypoints = prioritizedStops.slice(1, -1).map(stop => ({
-      location: { lat: stop.latitude, lng: stop.longitude },
-      stopover: true
-    }));
+    if (optimizationMethod === 'google') {
+      // Google Directions API optimization
+      const prioritizedStops = [...eligibleStops].sort((a, b) => (b.fill_level_percent || b.fillLevel || 0) - (a.fill_level_percent || a.fillLevel || 0));
+      
+      const origin = startStop || prioritizedStops[0];
+      const destination = endStop || prioritizedStops[prioritizedStops.length - 1];
+      const waypoints = prioritizedStops
+        .filter(stop => stop !== origin && stop !== destination)
+        .map(stop => ({
+          location: { lat: stop.latitude, lng: stop.longitude },
+          stopover: true
+        }));
 
-    const directionsService = new google.maps.DirectionsService();
+      const directionsService = new google.maps.DirectionsService();
 
-    try {
-      const result = await directionsService.route({
-        origin: { lat: origin.latitude, lng: origin.longitude },
-        destination: { lat: destination.latitude, lng: destination.longitude },
-        waypoints: waypoints,
-        optimizeWaypoints: true,
-        travelMode: google.maps.TravelMode.DRIVING
-      });
+      try {
+        const result = await directionsService.route({
+          origin: { lat: origin.latitude, lng: origin.longitude },
+          destination: { lat: destination.latitude, lng: destination.longitude },
+          waypoints: waypoints,
+          optimizeWaypoints: true,
+          travelMode: google.maps.TravelMode.DRIVING
+        });
 
-      directionsRenderer.setDirections(result);
-      onOptimizeRoute(prioritizedStops);
-    } catch (error) {
-      console.error("Error optimizing route:", error);
-      alert("Error optimizing route. Please try again.");
+        directionsRenderer.setDirections(result);
+        
+        // Reconstruct the optimized route from Google's response
+        const waypoint_order = result.routes[0].waypoint_order || [];
+        const waypointStops = waypoints.map((_, index) => 
+          prioritizedStops.filter(stop => stop !== origin && stop !== destination)[index]
+        );
+        
+        optimizedStops = [
+          origin,
+          ...waypoint_order.map(index => waypointStops[index]),
+          destination
+        ].filter(Boolean);
+
+        onOptimizeRoute(optimizedStops, startStop, endStop);
+      } catch (error) {
+        console.error("Error optimizing route:", error);
+        alert("Error optimizing route. Please try again.");
+      }
+    } else {
+      // Manual optimization algorithms
+      optimizedStops = optimizeRoute(eligibleStops, optimizationMethod, startStop, endStop);
+      
+      // Display route on map using Directions API
+      if (optimizedStops.length >= 2) {
+        const directionsService = new google.maps.DirectionsService();
+        const origin = optimizedStops[0];
+        const destination = optimizedStops[optimizedStops.length - 1];
+        const waypoints = optimizedStops.slice(1, -1).map(stop => ({
+          location: { lat: stop.latitude, lng: stop.longitude },
+          stopover: true
+        }));
+
+        try {
+          const result = await directionsService.route({
+            origin: { lat: origin.latitude, lng: origin.longitude },
+            destination: { lat: destination.latitude, lng: destination.longitude },
+            waypoints: waypoints,
+            optimizeWaypoints: false, // Don't re-optimize, use our algorithm's order
+            travelMode: google.maps.TravelMode.DRIVING
+          });
+
+          directionsRenderer.setDirections(result);
+          onOptimizeRoute(optimizedStops, startStop, endStop);
+        } catch (error) {
+          console.error("Error displaying route:", error);
+          alert("Error displaying route. Please try again.");
+        }
+      }
     }
   };
 
@@ -175,11 +266,11 @@ const GoogleMap = ({ stops, selectedArea, onOptimizeRoute, includeNormalBins = f
   useEffect(() => {
     if (stops.length > 0) {
       const timer = setTimeout(() => {
-        optimizeRoute();
+        optimizeRouteHandler();
       }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [stops]);
+  }, [stops, optimizationMethod, startStop, endStop]);
 
   return (
     <div className="relative w-full h-full">
@@ -188,7 +279,7 @@ const GoogleMap = ({ stops, selectedArea, onOptimizeRoute, includeNormalBins = f
       {/* Map Controls */}
       <div className="absolute top-4 right-4 flex flex-col space-y-2">
         <button
-          onClick={optimizeRoute}
+          onClick={optimizeRouteHandler}
           className="px-4 py-2 bg-primary text-primary-foreground rounded-lg shadow-lg hover:bg-primary/90 transition-colors text-sm font-medium"
         >
           Optimize Route
