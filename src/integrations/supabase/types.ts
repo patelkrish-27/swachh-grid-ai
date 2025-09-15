@@ -384,17 +384,7 @@ export type Database = {
       }
     }
     Views: {
-      leaderboard: {
-        Row: {
-          area: string | null
-          issues_resolved: number | null
-          name: string | null
-          points: number | null
-          rank: number | null
-          reports_submitted: number | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       generate_task_id: {
@@ -404,6 +394,17 @@ export type Database = {
       generate_tracking_id: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_leaderboard: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          area: string
+          issues_resolved: number
+          name: string
+          points: number
+          rank: number
+          reports_submitted: number
+        }[]
       }
       get_user_role: {
         Args: { user_id: string }
