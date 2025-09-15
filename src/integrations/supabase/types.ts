@@ -14,13 +14,401 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      alerts: {
+        Row: {
+          alert_type: string
+          bin_id: string | null
+          created_at: string | null
+          id: string
+          message: string
+          resolved_at: string | null
+          status: string | null
+        }
+        Insert: {
+          alert_type: string
+          bin_id?: string | null
+          created_at?: string | null
+          id?: string
+          message: string
+          resolved_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          alert_type?: string
+          bin_id?: string | null
+          created_at?: string | null
+          id?: string
+          message?: string
+          resolved_at?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alerts_bin_id_fkey"
+            columns: ["bin_id"]
+            isOneToOne: false
+            referencedRelation: "bins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bins: {
+        Row: {
+          battery: number | null
+          bin_id: string
+          created_at: string | null
+          fill_level: number | null
+          id: string
+          last_updated: string | null
+          lat: number | null
+          lng: number | null
+          location: string
+          region: string
+          status: string | null
+          temperature: number | null
+          waste_type: string | null
+        }
+        Insert: {
+          battery?: number | null
+          bin_id: string
+          created_at?: string | null
+          fill_level?: number | null
+          id?: string
+          last_updated?: string | null
+          lat?: number | null
+          lng?: number | null
+          location: string
+          region: string
+          status?: string | null
+          temperature?: number | null
+          waste_type?: string | null
+        }
+        Update: {
+          battery?: number | null
+          bin_id?: string
+          created_at?: string | null
+          fill_level?: number | null
+          id?: string
+          last_updated?: string | null
+          lat?: number | null
+          lng?: number | null
+          location?: string
+          region?: string
+          status?: string | null
+          temperature?: number | null
+          waste_type?: string | null
+        }
+        Relationships: []
+      }
+      citizens: {
+        Row: {
+          area: string | null
+          avatar_url: string | null
+          created_at: string | null
+          id: string
+          issues_resolved: number | null
+          name: string
+          phone: string | null
+          points: number | null
+          preferences: Json | null
+          reports_submitted: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          area?: string | null
+          avatar_url?: string | null
+          created_at?: string | null
+          id: string
+          issues_resolved?: number | null
+          name: string
+          phone?: string | null
+          points?: number | null
+          preferences?: Json | null
+          reports_submitted?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          area?: string | null
+          avatar_url?: string | null
+          created_at?: string | null
+          id?: string
+          issues_resolved?: number | null
+          name?: string
+          phone?: string | null
+          points?: number | null
+          preferences?: Json | null
+          reports_submitted?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "citizens_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reports: {
+        Row: {
+          citizen_id: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          lat: number | null
+          lng: number | null
+          location: string
+          photo_urls: string[] | null
+          points_awarded: number | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          status: string | null
+          tracking_id: string
+          type: string
+        }
+        Insert: {
+          citizen_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          location: string
+          photo_urls?: string[] | null
+          points_awarded?: number | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity: string
+          status?: string | null
+          tracking_id: string
+          type: string
+        }
+        Update: {
+          citizen_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          location?: string
+          photo_urls?: string[] | null
+          points_awarded?: number | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          status?: string | null
+          tracking_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_citizen_id_fkey"
+            columns: ["citizen_id"]
+            isOneToOne: false
+            referencedRelation: "citizens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      routes: {
+        Row: {
+          created_at: string | null
+          id: string
+          optimization_method: string | null
+          region: string
+          route_data: Json
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          optimization_method?: string | null
+          region: string
+          route_data: Json
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          optimization_method?: string | null
+          region?: string
+          route_data?: Json
+        }
+        Relationships: []
+      }
+      urgent_tasks: {
+        Row: {
+          bin_id: string | null
+          completed_at: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string
+          id: string
+          lat: number | null
+          lng: number | null
+          priority: string | null
+          status: string | null
+          task_id: string
+          worker_id: string | null
+        }
+        Insert: {
+          bin_id?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          priority?: string | null
+          status?: string | null
+          task_id: string
+          worker_id?: string | null
+        }
+        Update: {
+          bin_id?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          priority?: string | null
+          status?: string | null
+          task_id?: string
+          worker_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "urgent_tasks_bin_id_fkey"
+            columns: ["bin_id"]
+            isOneToOne: false
+            referencedRelation: "bins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "urgent_tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "urgent_tasks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          role: string
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          role: string
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          role?: string
+        }
+        Relationships: []
+      }
+      workers: {
+        Row: {
+          assigned_region: string
+          contact: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          name: string
+          status: string | null
+          updated_at: string | null
+          worker_id: string
+        }
+        Insert: {
+          assigned_region: string
+          contact?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id: string
+          name: string
+          status?: string | null
+          updated_at?: string | null
+          worker_id: string
+        }
+        Update: {
+          assigned_region?: string
+          contact?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          name?: string
+          status?: string | null
+          updated_at?: string | null
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workers_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workers_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
-      [_ in never]: never
+      leaderboard: {
+        Row: {
+          area: string | null
+          issues_resolved: number | null
+          name: string | null
+          points: number | null
+          rank: number | null
+          reports_submitted: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      [_ in never]: never
+      generate_task_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_tracking_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_user_role: {
+        Args: { user_id: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
