@@ -111,6 +111,7 @@ export default function Login() {
               type="submit"
               className="w-full bg-gradient-primary hover:opacity-90"
               disabled={loading}
+              onClick={() => navigate("/citizen/dashboard")}
             >
               {loading ? "Signing in..." : "Sign In"}
             </Button>
