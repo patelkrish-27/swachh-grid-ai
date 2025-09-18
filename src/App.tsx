@@ -7,8 +7,10 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { Layout } from "./components/shared/Layout";
 
 // Auth pages
+import Index from "./pages/Index";
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
+import AuthSelection from "./pages/AuthSelection";
 
 // Admin pages
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -78,11 +80,10 @@ function AppRoutes() {
   return (
     <Routes>
       {/* Public routes */}
+      <Route path="/" element={user ? <Navigate to={getDefaultRoute()} replace /> : <Index />} />
       <Route path="/login" element={user ? <Navigate to={getDefaultRoute()} replace /> : <Login />} />
       <Route path="/signup" element={user ? <Navigate to={getDefaultRoute()} replace /> : <SignUp />} />
-      
-      {/* Default route */}
-      <Route path="/" element={<Navigate to={getDefaultRoute()} replace />} />
+      <Route path="/auth" element={user ? <Navigate to={getDefaultRoute()} replace /> : <AuthSelection />} />
       
       {/* Admin routes */}
       <Route path="/admin/dashboard" element={

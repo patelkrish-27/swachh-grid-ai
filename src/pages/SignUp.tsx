@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Recycle, Eye, EyeOff } from 'lucide-react';
+import { Recycle, Eye, EyeOff, Users, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function SignUp() {
@@ -23,6 +23,7 @@ export default function SignUp() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   const { signUp } = useAuth();
   const navigate = useNavigate();
@@ -61,10 +62,11 @@ export default function SignUp() {
       setLoading(false);
     } else {
       toast({
-        title: "Account created!",
-        description: "Please check your email to verify your account.",
+        title: "Account created successfully!",
+        description: "Please check your email and click the confirmation link to activate your account.",
       });
-      navigate('/login');
+      setShowConfirmation(true);
+      setLoading(false);
     }
   };
 
@@ -72,16 +74,59 @@ export default function SignUp() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  if (showConfirmation) {
+    return (
+      <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-elegant text-center">
+          <CardHeader>
+            <div className="mx-auto w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center mb-4">
+              <Users className="w-8 h-8 text-white" />
+            </div>
+            <CardTitle className="text-2xl font-bold">Check Your Email</CardTitle>
+            <CardDescription>
+              We've sent a confirmation link to your email address. Please click the link to activate your account.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <Alert>
+                <AlertDescription>
+                  <strong>Important:</strong> Check your spam folder if you don't see the email within a few minutes.
+                </AlertDescription>
+              </Alert>
+              <div className="flex flex-col space-y-2">
+                <Link to="/login?role=citizen">
+                  <Button className="w-full bg-emerald-500 hover:bg-emerald-600">
+                    Go to Login
+                  </Button>
+                </Link>
+                <Link to="/">
+                  <Button variant="outline" className="w-full">
+                    Back to Home
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-elegant">
         <CardHeader className="text-center">
-          <div className="mx-auto w-16 h-16 bg-gradient-primary rounded-full flex items-center justify-center mb-4">
-            <Recycle className="w-8 h-8 text-primary-foreground" />
+          <Link to="/" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Home
+          </Link>
+          <div className="mx-auto w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center mb-4">
+            <Users className="w-8 h-8 text-white" />
           </div>
-          <CardTitle className="text-2xl font-bold">Join SwachhGrid</CardTitle>
+          <CardTitle className="text-2xl font-bold">Join as Citizen</CardTitle>
           <CardDescription>
-            Create your citizen account and help make your city cleaner
+            Create your account and start making a difference in your community
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -174,16 +219,22 @@ export default function SignUp() {
 
             <Button
               type="submit"
-              className="w-full bg-gradient-primary hover:opacity-90"
+              className="w-full bg-emerald-500 hover:bg-emerald-600"
               disabled={loading}
             >
-              {loading ? "Creating account..." : "Create Account"}
+              {loading ? "Creating account..." : "Create Citizen Account"}
             </Button>
 
             <div className="text-center text-sm text-muted-foreground">
               Already have an account?{' '}
-              <Link to="/login" className="text-primary hover:underline">
-                Sign in
+              <Link to="/login?role=citizen" className="text-emerald-500 hover:underline">
+                Sign in as citizen
+              </Link>
+            </div>
+            <div className="text-center text-sm text-muted-foreground">
+              Need different access?{' '}
+              <Link to="/auth" className="text-primary hover:underline">
+                Choose your role
               </Link>
             </div>
           </form>

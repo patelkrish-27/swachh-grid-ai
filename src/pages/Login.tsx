@@ -1,14 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Recycle, Eye, EyeOff } from 'lucide-react';
+import { Recycle, Eye, EyeOff, Users, Truck, Shield, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function Login() {
@@ -17,10 +17,36 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [searchParams] = useSearchParams();
+  const [userRole, setUserRole] = useState<string>('');
 
-  const { signIn } = useAuth();
+  const { signIn, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const role = searchParams.get('role') || '';
+    setUserRole(role);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (user) {
+      // Redirect based on user role
+      switch (user.role) {
+        case 'admin':
+          navigate('/admin/dashboard');
+          break;
+        case 'worker':
+          navigate('/worker/dashboard');
+          break;
+        case 'citizen':
+          navigate('/citizen/dashboard');
+          break;
+        default:
+          navigate('/');
+      }
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,22 +63,67 @@ export default function Login() {
         title: "Welcome back!",
         description: "You have been signed in successfully.",
       });
-      
-      // Redirect based on user role will be handled by App.tsx
-      navigate('/');
     }
   };
 
+  const getRoleConfig = () => {
+    switch (userRole) {
+      case 'citizen':
+        return {
+          icon: Users,
+          color: 'emerald',
+          title: 'Citizen Portal',
+          description: 'Access your community dashboard',
+          bgColor: 'bg-emerald-500',
+          borderColor: 'border-emerald-500/20'
+        };
+      case 'worker':
+        return {
+          icon: Truck,
+          color: 'blue',
+          title: 'Worker Portal',
+          description: 'Manage your collection tasks',
+          bgColor: 'bg-blue-500',
+          borderColor: 'border-blue-500/20'
+        };
+      case 'admin':
+        return {
+          icon: Shield,
+          color: 'purple',
+          title: 'Admin Dashboard',
+          description: 'System administration portal',
+          bgColor: 'bg-purple-500',
+          borderColor: 'border-purple-500/20'
+        };
+      default:
+        return {
+          icon: Recycle,
+          color: 'primary',
+          title: 'SwachhGrid',
+          description: 'Sign in to your account to continue',
+          bgColor: 'bg-gradient-primary',
+          borderColor: 'border-primary/20'
+        };
+    }
+  };
+
+  const roleConfig = getRoleConfig();
+  const IconComponent = roleConfig.icon;
+
   return (
     <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-elegant">
+      <Card className={`w-full max-w-md shadow-elegant ${roleConfig.borderColor}`}>
         <CardHeader className="text-center">
-          <div className="mx-auto w-16 h-16 bg-gradient-primary rounded-full flex items-center justify-center mb-4">
-            <Recycle className="w-8 h-8 text-primary-foreground" />
+          <Link to="/auth" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to role selection
+          </Link>
+          <div className={`mx-auto w-16 h-16 ${roleConfig.bgColor} rounded-full flex items-center justify-center mb-4`}>
+            <IconComponent className="w-8 h-8 text-white" />
           </div>
-          <CardTitle className="text-2xl font-bold">Welcome to SwachhGrid</CardTitle>
+          <CardTitle className="text-2xl font-bold">{roleConfig.title}</CardTitle>
           <CardDescription>
-            Sign in to your account to continue
+            {roleConfig.description}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -109,11 +180,10 @@ export default function Login() {
 
             <Button
               type="submit"
-              className="w-full bg-gradient-primary hover:opacity-90"
+              className={`w-full ${roleConfig.bgColor} hover:opacity-90 text-white`}
               disabled={loading}
-              // onClick={() => navigate("/citizen/dashboard")}
             >
-              {loading ? "Signing in..." : "Sign In"}
+              {loading ? "Signing in..." : `Sign In as ${userRole ? userRole.charAt(0).toUpperCase() + userRole.slice(1) : 'User'}`}
             </Button>
 
             <div className="text-center text-sm text-muted-foreground">
